@@ -91,6 +91,19 @@
                 const videoInputDevices = await codeReader.getVideoInputDevices();
                 const cameraSelect = document.getElementById('camera-select');
 
+                // this.codeReader.listVideoInputDevices().then(res => {
+                //     if (res.length) {
+                //         this.videoInputDevice = res
+                //         this.deviceId = res[1].deviceId
+                //     }
+                //     this.scanCode();
+                // }).catch((err) => {
+                //     uni.showModal({
+                //         title: '提示',
+                //         content: '当前浏览器环境不支持获取视频通道',
+                //         showCancel: false
+                //     });
+                // })
                 // 清空下拉菜單
                 cameraSelect.innerHTML = '';
 
