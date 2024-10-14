@@ -50,6 +50,9 @@
         }
       }
     </style>
+     <!-- 正確引入 @zxing/library 的 UMD 版本 -->
+     <script src="https://cdn.jsdelivr.net/npm/@zxing/library@latest/umd/index.min.js"></script>
+
   </head>
   <body>
     <h1>ZXing 條碼掃描</h1>
@@ -74,9 +77,6 @@
     <div id="result" style="margin-top: 20px">
       條碼結果：<span id="barcode-result"></span>
     </div>
-
-    <!-- 正確引入 @zxing/library 的 UMD 版本 -->
-    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@latest/umd/index.min.js"></script>
 
     <script>
       // 初始化 ZXing 條碼讀取器
