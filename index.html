@@ -21,8 +21,8 @@
         position: absolute;
         top: 50%; /* 掃描框垂直置中 */
         left: 50%; /* 掃描框水平置中 */
-        width: 50%;
-        height: 50%;
+        width: 200px;
+        height: 200px;
         border: 2px solid red;
         transform: translate(-50%, -50%);
         box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
@@ -50,9 +50,6 @@
         }
       }
     </style>
-    <!-- 正確引入 @zxing/library 的 UMD 版本 -->
-    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@latest/umd/index.min.js"></script>
-    <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
   </head>
   <body>
     <h1>ZXing 條碼掃描</h1>
@@ -64,8 +61,8 @@
     </div>
 
     <!-- 攝像頭視頻流區域 -->
-    <div style="position: relative;">
-      <video id="video" width="100%" height="80%" autoplay></video>
+    <div style="position: relative; width: 300px; height: 200px">
+      <video id="video" width="300" height="200" autoplay></video>
       <!-- 掃描框 -->
       <div id="scan-frame">
         <!-- 掃碼線 -->
@@ -73,23 +70,19 @@
       </div>
     </div>
 
-    <!-- 缩放控制區域 -->
-    <div style="margin-top: 20px">
-      <label for="zoom-control">缩放：</label>
-      <input type="range" id="zoom-control" min="1" max="3" step="0.1" />
-    </div>
-
     <!-- 顯示掃描結果的區域 -->
     <div id="result" style="margin-top: 20px">
       條碼結果：<span id="barcode-result"></span>
     </div>
+
+    <!-- 正確引入 @zxing/library 的 UMD 版本 -->
+    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@latest/umd/index.min.js"></script>
 
     <script>
       // 初始化 ZXing 條碼讀取器
       const codeReader = new ZXing.BrowserMultiFormatReader();
       let lastResult = ""; // 用於保存上一次掃描結果
       let selectedDeviceId = null; // 用於保存用戶選擇的攝像頭設備ID
-      let stream = null; // 用於保存視頻流
 
       // 獲取攝像頭設備並填充到下拉菜單
       async function getCamerasAndPopulateSelect() {
@@ -98,8 +91,6 @@
           const videoInputDevices = await codeReader.getVideoInputDevices();
           const cameraSelect = document.getElementById("camera-select");
           if (videoInputDevices.length > 0) {
-            // 默認選擇第一個設備
-            selectedDeviceId = videoInputDevices[0].deviceId;
             console.log(videoInputDevices);
 
             // 清空下拉菜單
@@ -112,6 +103,9 @@
               option.text = device.label || `Camera ${index + 1}`;
               cameraSelect.appendChild(option);
             });
+
+            // 默認選擇第一個設備
+            selectedDeviceId = videoInputDevices[0].deviceId;
             cameraSelect.value = selectedDeviceId;
 
             // 當用戶選擇不同的攝像頭時更新選擇的設備ID
@@ -119,11 +113,28 @@
               selectedDeviceId = event.target.value;
               startScanning(); // 重新開始掃描
             });
+
             // 啟動掃描
             startScanning();
           } else {
             console.error("沒有找到攝像頭設備");
           }
+
+          // this.codeReader.listVideoInputDevices().then(res => {
+          //     if (res.length) {
+          //         this.videoInputDevice = res
+          //         this.deviceId = res[1].deviceId
+          //     }
+          //     this.scanCode();
+          // }).catch((err) => {
+          //     uni.showModal({
+          //         title: '提示',
+          //         content: '当前浏览器环境不支持获取视频通道',
+          //         showCancel: false
+          //     });
+          // })
+
+        //   startScanning();
         } catch (err) {
           console.error("無法獲取攝像頭設備:", err);
         }
@@ -133,80 +144,40 @@
       async function startScanning() {
         if (!selectedDeviceId) return;
 
-        // 停止之前的視頻流
-        if (stream) {
-          stream.getTracks().forEach((track) => track.stop());
-        }
-
         // 顯示掃描框和掃碼線
         document.getElementById("scan-frame").style.display = "block";
         document.getElementById("scan-line").style.display = "block";
 
-        try {
-          // 開始從攝像頭捕獲視頻
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: { deviceId: selectedDeviceId }
-          });
-          document.getElementById("video").srcObject = stream;
+        // 開始從攝像頭捕獲視頻
+        codeReader.decodeFromVideoDevice(
+          selectedDeviceId,
+          "video",
+          (result, err) => {
+            if (result) {
+              // 獲取掃描結果
+              const currentResult = result.text;
 
-          // 設置缩放控制
-          const videoTrack = stream.getVideoTracks()[0];
-          const capabilities = videoTrack.getCapabilities();
-          console.log(capabilities)
-          if (capabilities.zoom) {
-            const zoomControl = document.getElementById("zoom-control");
-            zoomControl.min = capabilities.zoom.min;
-            zoomControl.max = capabilities.zoom.max;
-            zoomControl.step = capabilities.zoom.step;
-            zoomControl.value = capabilities.zoom.min;
+              // 顯示解碼後的結果
+              document.getElementById("barcode-result").textContent =
+                currentResult;
 
-            zoomControl.oninput = async (event) => {
-              const zoomLevel = event.target.value;
-              console.log(event.target.value)
-              try {
-                await videoTrack.applyConstraints({
-                  advanced: [{ zoom: zoomLevel }]
-                });
-              } catch (err) {
-                console.warn("無法設置缩放级别:", err);
-              }
-            };
-          }
+              // 無論是否相同，只要掃描成功都隱藏掃碼線和掃描框
+              document.getElementById("scan-frame").style.display = "none";
+              document.getElementById("scan-line").style.display = "none";
 
-          // 使用 ZXing 解碼器來處理視頻流
-          codeReader.decodeFromVideoDevice(
-            selectedDeviceId,
-            "video",
-            (result, err) => {
-              if (result) {
-                // 獲取掃描結果
-                const currentResult = result.text;
-
-                // 顯示解碼後的結果
-                document.getElementById("barcode-result").textContent =
-                  currentResult;
-
-                // 無論是否相同，只要掃描成功都隱藏掃碼線和掃描框
-                document.getElementById("scan-frame").style.display = "none";
-                document.getElementById("scan-line").style.display = "none";
-
-                // 更新最後一次的結果
-                lastResult = currentResult;
-              } else {
-                // 如果沒有結果，繼續顯示掃碼線
-                document.getElementById("scan-frame").style.display = "block";
-                document.getElementById("scan-line").style.display = "block";
-              }
-
-              // 如果有錯誤但不是未找到條形碼的錯誤，記錄錯誤
-              if (err && !(err instanceof ZXing.NotFoundException)) {
-                console.error(err);
-              }
+              // 更新最後一次的結果
+              lastResult = currentResult;
+            } else {
+              // 如果沒有結果，繼續顯示掃碼線
+              document.getElementById("scan-line").style.display = "block";
             }
-          );
-        } catch (err) {
-          console.error("無法獲取攝像頭視頻流:", err);
-        }
+
+            // 如果有錯誤但不是未找到條形碼的錯誤，記錄錯誤
+            if (err && !(err instanceof ZXing.NotFoundException)) {
+              console.error(err);
+            }
+          }
+        );
       }
 
       // 獲取攝像頭設備並填充到下拉菜單
