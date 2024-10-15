@@ -37,7 +37,9 @@
       <div id="result">
         條碼結果：<span id="barcode-result"></span>
         <br>
-        历史结果: <span id="output"></div>
+        历史结果:
+        <br>
+        <span id="output"></div>
       </div>
     </div>
 
@@ -51,23 +53,23 @@
           name: "Live",
           type: "LiveStream",
           target: document.getElementById("video"),
-          // constraints: { width: 640, height: 480, facingMode: "environment" }
+          constraints: { width: 640, height: 480, facingMode: "environment" }
         },
         locator: {
-            patchSize: "x-small",
+            patchSize: "medium",
             halfSample: false,
             debug: {
-              showCanvas: false,
-              showPatches: false,
-              showFoundPatches: false,
-              showSkeleton: false,
-              showLabels: false,
-              showPatchLabels: false,
-              showRemainingPatchLabels: false,
+              showCanvas: true,
+              showPatches: true,
+              showFoundPatches: true,
+              showSkeleton: true,
+              showLabels: true,
+              showPatchLabels: true,
+              showRemainingPatchLabels: true,
               boxFromPatches: {
-                showTransformed: false,
-                showTransformedBox: false,
-                showBB: false
+                showTransformed: true,
+                showTransformedBox: true,
+                showBB: true
               }
             }
         },
@@ -111,13 +113,18 @@
     //   outputDiv.innerHTML =
     //     result.codeResult.code + "<br/>" + outputDiv.innerHTML;
     // });
-
+    index = 1;
     Quagga.onDetected(function (result) {
-      console.log(result);
+      // console.log(result);
       console.log(result.codeResult);
       document.getElementById("barcode-result").textContent = result.codeResult.code;
       var outputDiv = document.getElementById("output");
-      document.getElementById("output").innerHTML = result.codeResult.code + "<br/>" + outputDiv.innerHTML;
+      outputDiv.innerHTML = result.codeResult.code + "," + outputDiv.innerHTML;
+      index++;
+      if(index > 5){
+        index = 1;
+        outputDiv.innerHTML = "<br/>" + outputDiv.innerHTML ;
+      }
     });
 
     // 处理识别过程数据，在视频图像上画线/画框
