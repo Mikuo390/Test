@@ -29,18 +29,16 @@
   <body>
     <h1>Quagga 條碼掃描</h1>
 
-    <div
-      id="viewport"
-      width="100%"
-      height="80%"
-      style="position: relative"
-      autoplay
-    ></div>
+    <div style="position: relative;">
+      <div id="video" width="100%" height="80%" autoplay></div>
+    </div>
     <!-- 顯示掃描結果的區域 -->
-    <div id="result" style="margin-top: 20px">
-      條碼結果：<span id="barcode-result"></span>
-      <br>
-      历史结果: <span id="output"></div>
+    <div style="margin-top: 20px">
+      <div id="result">
+        條碼結果：<span id="barcode-result"></span>
+        <br>
+        历史结果: <span id="output"></div>
+      </div>
     </div>
 
   </body>
@@ -52,7 +50,7 @@
         inputStream: {
           name: "Live",
           type: "LiveStream",
-          target: document.getElementById("viewport"),
+          target: document.getElementById("video"),
           // constraints: { width: 640, height: 480, facingMode: "environment" }
         },
         // locator: {
