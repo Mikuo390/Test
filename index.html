@@ -53,9 +53,24 @@
           target: document.getElementById("video"),
           // constraints: { width: 640, height: 480, facingMode: "environment" }
         },
-        // locator: {
-        //     patchSize: "medium"
-        // },
+        locator: {
+            patchSize: "x-small",
+            halfSample: false,
+            debug: {
+              showCanvas: false,
+              showPatches: false,
+              showFoundPatches: false,
+              showSkeleton: false,
+              showLabels: false,
+              showPatchLabels: false,
+              showRemainingPatchLabels: false,
+              boxFromPatches: {
+                showTransformed: false,
+                showTransformedBox: false,
+                showBB: false
+              }
+            }
+        },
         // numOfWorkers: 2,
         decoder: {
           readers: [
