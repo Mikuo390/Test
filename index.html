@@ -1,9 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ZXing 條碼掃描</title>
+    <title>Quagga JS Example</title>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.0/quagga.min.css"
+      rel="stylesheet"
+    />
     <style>
       body {
         display: flex;
@@ -16,199 +18,136 @@
         margin-bottom: 20px;
         position: relative;
       }
-      /* 掃描框樣式，初始隱藏 */
-      #scan-frame {
-        position: absolute;
-        top: 50%; /* 掃描框垂直置中 */
-        left: 50%; /* 掃描框水平置中 */
-        width: 50%;
-        height: 50%;
-        border: 2px solid red;
-        transform: translate(-50%, -50%);
-        box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
-        pointer-events: none; /* 不影響視頻點擊 */
-        display: none; /* 默認隱藏 */
-      }
-      /* 掃碼線樣式，初始隱藏 */
-      #scan-line {
+      .drawingBuffer {
         position: absolute;
         top: 0;
         left: 0;
-        width: 100%;
-        height: 2px;
-        background-color: lime;
-        animation: scan-line-animation 2s infinite;
-        display: none; /* 默認隱藏 */
-      }
-      /* 掃碼線的上下移動動畫 */
-      @keyframes scan-line-animation {
-        0% {
-          top: 0;
-        }
-        100% {
-          top: 100%;
-        }
       }
     </style>
-    <!-- 正確引入 @zxing/library 的 UMD 版本 -->
-    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@latest/umd/index.min.js"></script>
   </head>
+
   <body>
-    <h1>ZXing 條碼掃描</h1>
+    <h1>Quagga 條碼掃描</h1>
 
-    <!-- 攝像頭選擇區域 -->
-    <div style="margin-bottom: 20px">
-      <label for="camera-select">選擇攝像頭：</label>
-      <select id="camera-select"></select>
-    </div>
-
-    <!-- 攝像頭視頻流區域 -->
-    <div style="position: relative;">
-      <video id="video" width="100%" height="80%" autoplay></video>
-      <!-- 掃描框 -->
-      <div id="scan-frame">
-        <!-- 掃碼線 -->
-        <div id="scan-line"></div>
-      </div>
-    </div>
-
-    <!-- 對焦控制區域 -->
-    <div style="margin-top: 20px">
-      <label for="focus-control">對焦距離：</label>
-      <input type="range" id="focus-control" min="0" max="100" step="1" />
-    </div>
-
+    <div
+      id="viewport"
+      width="100%"
+      height="80%"
+      style="position: relative"
+      autoplay
+    ></div>
     <!-- 顯示掃描結果的區域 -->
     <div id="result" style="margin-top: 20px">
       條碼結果：<span id="barcode-result"></span>
+      <br>
+      历史结果: <span id="output"></div>
     </div>
 
-    <script>
-      // 初始化 ZXing 條碼讀取器
-      const codeReader = new ZXing.BrowserMultiFormatReader();
-      let lastResult = ""; // 用於保存上一次掃描結果
-      let selectedDeviceId = null; // 用於保存用戶選擇的攝像頭設備ID
-      let stream = null; // 用於保存視頻流
-
-      // 獲取攝像頭設備並填充到下拉菜單
-      async function getCamerasAndPopulateSelect() {
-        try {
-          // 獲取可用的攝像頭設備
-          const videoInputDevices = await codeReader.getVideoInputDevices();
-          const cameraSelect = document.getElementById("camera-select");
-          if (videoInputDevices.length > 0) {
-            // 默認選擇第一個設備
-            selectedDeviceId = videoInputDevices[0].deviceId;
-            console.log(videoInputDevices);
-
-            // 清空下拉菜單
-            cameraSelect.innerHTML = "";
-
-            // 將每個攝像頭設備添加到下拉菜單中
-            videoInputDevices.forEach((device, index) => {
-              const option = document.createElement("option");
-              option.value = device.deviceId;
-              option.text = device.label || `Camera ${index + 1}`;
-              cameraSelect.appendChild(option);
-            });
-            cameraSelect.value = selectedDeviceId;
-
-            // 當用戶選擇不同的攝像頭時更新選擇的設備ID
-            cameraSelect.addEventListener("change", (event) => {
-              selectedDeviceId = event.target.value;
-              startScanning(); // 重新開始掃描
-            });
-            // 啟動掃描
-            startScanning();
-          } else {
-            console.error("沒有找到攝像頭設備");
-          }
-        } catch (err) {
-          console.error("無法獲取攝像頭設備:", err);
-        }
-      }
-
-      // 檢查攝像頭權限並開始掃描
-      async function startScanning() {
-        if (!selectedDeviceId) return;
-
-        // 停止之前的視頻流
-        if (stream) {
-          stream.getTracks().forEach((track) => track.stop());
-        }
-
-        // 顯示掃描框和掃碼線
-        document.getElementById("scan-frame").style.display = "block";
-        document.getElementById("scan-line").style.display = "block";
-
-        try {
-          // 開始從攝像頭捕獲視頻
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: { deviceId: selectedDeviceId }
-          });
-          document.getElementById("video").srcObject = stream;
-
-          // 設置手動對焦控制
-          const videoTrack = stream.getVideoTracks()[0];
-          const capabilities = videoTrack.getCapabilities();
-
-          if (capabilities.focusDistance) {
-            const focusControl = document.getElementById("focus-control");
-            focusControl.min = capabilities.focusDistance.min;
-            focusControl.max = capabilities.focusDistance.max;
-            focusControl.step = capabilities.focusDistance.step;
-            focusControl.value = capabilities.focusDistance.min;
-
-            focusControl.oninput = async (event) => {
-              const focusDistance = event.target.value;
-              try {
-                await videoTrack.applyConstraints({
-                  advanced: [{ focusDistance }]
-                });
-              } catch (err) {
-                console.warn("無法設置對焦距離:", err);
-              }
-            };
-          }
-
-          // 使用 ZXing 解碼器來處理視頻流
-          codeReader.decodeFromVideoDevice(
-            selectedDeviceId,
-            "video",
-            (result, err) => {
-              if (result) {
-                // 獲取掃描結果
-                const currentResult = result.text;
-
-                // 顯示解碼後的結果
-                document.getElementById("barcode-result").textContent =
-                  currentResult;
-
-                // 無論是否相同，只要掃描成功都隱藏掃碼線和掃描框
-                document.getElementById("scan-frame").style.display = "none";
-                document.getElementById("scan-line").style.display = "none";
-
-                // 更新最後一次的結果
-                lastResult = currentResult;
-              } else {
-                // 如果沒有結果，繼續顯示掃碼線
-                document.getElementById("scan-frame").style.display = "block";
-                document.getElementById("scan-line").style.display = "block";
-              }
-
-              // 如果有錯誤但不是未找到條形碼的錯誤，記錄錯誤
-              if (err && !(err instanceof ZXing.NotFoundException)) {
-                console.error(err);
-              }
-            }
-          );
-        } catch (err) {
-          console.error("無法獲取攝像頭視頻流:", err);
-        }
-      }
-
-      // 獲取攝像頭設備並填充到下拉菜單
-      getCamerasAndPopulateSelect();
-    </script>
   </body>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+  <!-- <script src="./dist/quagga.min.js"></script> -->
+  <script type="text/javascript">
+    Quagga.init(
+      {
+        inputStream: {
+          name: "Live",
+          type: "LiveStream",
+          target: document.getElementById("viewport"),
+          // constraints: { width: 640, height: 480, facingMode: "environment" }
+        },
+        // locator: {
+        //     patchSize: "medium"
+        // },
+        // numOfWorkers: 2,
+        decoder: {
+          readers: [
+            // "code_128_reader",
+            "ean_reader",
+            // "ean_8_reader",
+            // "code_39_reader",
+            // "code_39_vin_reader",
+            // "codabar_reader",
+            // "upc_reader",
+            // "upc_e_reader",
+            // "i2of5_reader",
+            // "2of5_reader",
+            // "code_93_reader",
+          ],
+          debug: {
+            drawBoundingBox: true,
+            showFrequency: true,
+            drawScanline: true,
+            showPattern: true,
+          },
+          multiple: false,
+        },
+      },
+      function (err) {
+        if (err) {
+          console.error(err);
+          return;
+        }
+        console.log("Initialization successful");
+        Quagga.start();
+        console.log("Initialization start");
+      }
+    );
+    // Quagga.onDetected(function (result) {
+    //   console.log(result);
+    //   var outputDiv = document.getElementById("output");
+    //   outputDiv.innerHTML =
+    //     result.codeResult.code + "<br/>" + outputDiv.innerHTML;
+    // });
+
+    Quagga.onDetected(function (result) {
+      console.log(result);
+      console.log(result.codeResult);
+      document.getElementById("barcode-result").textContent = result.codeResult.code;
+      var outputDiv = document.getElementById("output");
+      document.getElementById("output").innerHTML = result.codeResult.code + "<br/>" + outputDiv.innerHTML;
+    });
+
+    // 处理识别过程数据，在视频图像上画线/画框
+    Quagga.onProcessed(function (result) {
+      // console.log(result);
+      const drawingCtx = Quagga.canvas.ctx.overlay,
+        drawingCanvas = Quagga.canvas.dom.overlay;
+      if (result) {
+        if (result.boxes) {
+          drawingCtx.clearRect(
+            0,
+            0,
+            parseInt(drawingCanvas.getAttribute("width")),
+            parseInt(drawingCanvas.getAttribute("height"))
+          );
+          result.boxes
+            .filter(function (box) {
+              return box !== result.box;
+            })
+            .forEach(function (box) {
+              Quagga.ImageDebug.drawPath(box, { x: 0, y: 1 }, drawingCtx, {
+                color: "green",
+                lineWidth: 2,
+              });
+            });
+        }
+
+        if (result.box) {
+          Quagga.ImageDebug.drawPath(result.box, { x: 0, y: 1 }, drawingCtx, {
+            color: "#00F",
+            lineWidth: 2,
+          });
+        }
+
+        if (result.codeResult && result.codeResult.code) {
+          Quagga.ImageDebug.drawPath(
+            result.line,
+            { x: "x", y: "y" },
+            drawingCtx,
+            { color: "red", lineWidth: 3 }
+          );
+        }
+      }
+    });
+  </script>
 </html>
