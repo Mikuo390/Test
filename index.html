@@ -115,6 +115,9 @@
           if (videoInputDevices.length > 0) {
             // 默認選擇第一個設備
             selectedDeviceId = videoInputDevices[0].deviceId;
+            if (!selectedDeviceId) {
+              displayErrorMessage("無法獲取攝像頭設備");
+            }
             console.log(videoInputDevices);
 
             // 清空下拉菜單
