@@ -64,13 +64,18 @@
     </div>
 
     <!-- 攝像頭視頻流區域 -->
-    <div style="position: relative;">
+    <div style="position: relative">
       <video id="video" width="100%" height="80%" autoplay></video>
       <!-- 掃描框 -->
       <div id="scan-frame">
         <!-- 掃碼線 -->
         <div id="scan-line"></div>
       </div>
+    </div>
+
+    <!-- 新增一個 div 用於顯示縮放支援狀態 -->
+    <div id="zoom-support" style="margin-top: 20px; color: blue">
+      縮放支援狀態：未知
     </div>
 
     <!-- 缩放控制區域 -->
@@ -82,6 +87,11 @@
     <!-- 顯示掃描結果的區域 -->
     <div id="result" style="margin-top: 20px">
       條碼結果：<span id="barcode-result"></span>
+    </div>
+
+    <!-- 新增一個 div 用於顯示掃描狀態 -->
+    <div id="scan-status" style="margin-top: 20px; color: green">
+      掃描狀態：未開始
     </div>
 
     <script>
@@ -132,7 +142,11 @@
       // 檢查攝像頭權限並開始掃描
       async function startScanning() {
         if (!selectedDeviceId) return;
-        console.log("Start Scan")
+        console.log("Start Scan");
+
+        // 更新掃描狀態
+        document.getElementById("scan-status").textContent =
+          "掃描狀態：正在掃描";
 
         // 停止之前的視頻流
         if (stream) {
@@ -146,15 +160,18 @@
         try {
           // 開始從攝像頭捕獲視頻
           stream = await navigator.mediaDevices.getUserMedia({
-            video: { deviceId: selectedDeviceId }
+            video: { deviceId: selectedDeviceId },
           });
           document.getElementById("video").srcObject = stream;
 
-          // 設置缩放控制
+          // 設置縮放控制
           const videoTrack = stream.getVideoTracks()[0];
           const capabilities = videoTrack.getCapabilities();
-          console.log(capabilities)
+
+          // 檢查攝像頭是否支援縮放並更新顯示
           if (capabilities.zoom) {
+            document.getElementById("zoom-support").textContent =
+              "縮放支援狀態：支援";
             const zoomControl = document.getElementById("zoom-control");
             zoomControl.min = capabilities.zoom.min;
             zoomControl.max = capabilities.zoom.max;
@@ -163,15 +180,17 @@
 
             zoomControl.oninput = async (event) => {
               const zoomLevel = event.target.value;
-              console.log(event.target.value)
               try {
                 await videoTrack.applyConstraints({
-                  advanced: [{ zoom: zoomLevel }]
+                  advanced: [{ zoom: zoomLevel }],
                 });
               } catch (err) {
-                console.warn("無法設置缩放级别:", err);
+                console.warn("無法設置縮放級別:", err);
               }
             };
+          } else {
+            document.getElementById("zoom-support").textContent =
+              "縮放支援狀態：不支援";
           }
 
           // 使用 ZXing 解碼器來處理視頻流
@@ -180,21 +199,23 @@
             "video",
             (result, err) => {
               if (result) {
-                // 獲取掃描結果
-                const currentResult = result.text;
+                // 更新掃描狀態為成功
+                document.getElementById("scan-status").textContent =
+                  "掃描狀態：成功";
 
                 // 顯示解碼後的結果
+                const currentResult = result.text;
                 document.getElementById("barcode-result").textContent =
                   currentResult;
 
-                // 無論是否相同，只要掃描成功都隱藏掃碼線和掃描框
+                // 隱藏掃碼線和掃描框
                 document.getElementById("scan-frame").style.display = "none";
                 document.getElementById("scan-line").style.display = "none";
 
                 // 更新最後一次的結果
                 lastResult = currentResult;
               } else {
-                // 如果沒有結果，繼續顯示掃碼線
+                // 繼續顯示掃碼線
                 document.getElementById("scan-frame").style.display = "block";
                 document.getElementById("scan-line").style.display = "block";
               }
@@ -207,6 +228,11 @@
           );
         } catch (err) {
           console.error("無法獲取攝像頭視頻流:", err);
+          // 更新掃描狀態為失敗
+          document.getElementById("scan-status").textContent = "掃描狀態：失敗";
+          // 更新縮放支援狀態為未知
+          document.getElementById("zoom-support").textContent =
+            "縮放支援狀態：未知";
         }
       }
 
