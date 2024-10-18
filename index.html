@@ -131,7 +131,7 @@
 
       // 檢查攝像頭權限並開始掃描
       async function startScanning() {
-        // if (!selectedDeviceId) return;
+        if (!selectedDeviceId) return;
         console.log("Start Scan")
 
         // 停止之前的視頻流
