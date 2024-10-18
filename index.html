@@ -9,11 +9,11 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin: 10px;
+            margin: 5px;
         }
         video {
             border: 1px solid #ccc;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
             position: relative;
         }
         /* 掃描框樣式，初始隱藏 */
@@ -58,7 +58,7 @@
     <h3>ZXing 條碼掃描</h1>
 
     <!-- 攝像頭選擇區域 -->
-    <div style="margin-bottom: 10px">
+    <div style="margin-bottom: 5px">
         <label for="camera-select">選擇攝像頭：</label>
         <select id="camera-select"></select>
     </div>
@@ -74,28 +74,28 @@
     </div>
 
     <!-- div 用於顯示縮放支援狀態 -->
-    <div id="zoom-support" style="margin-top: 10px; color: blue">
+    <div id="zoom-support" style="margin-top: 5px; color: blue">
         縮放支援狀態：未知
     </div>
 
     <!-- 缩放控制區域 -->
-    <div style="margin-top: 10px">
+    <div style="margin-top: 5px">
         <label for="zoom-control">縮放：</label>
         <input type="range" id="zoom-control" min="1" max="3" step="0.1" />
     </div>
 
     <!-- 顯示掃描結果的區域 -->
-    <div id="result" style="margin-top: 10px">
+    <div id="result" style="margin-top: 5px">
         條碼結果：<span id="barcode-result"></span>
     </div>
 
     <!-- div 用於顯示掃描狀態 -->
-    <div id="scan-status" style="margin-top: 10px; color: green">
+    <div id="scan-status" style="margin-top: 5px; color: green">
         掃描狀態：未開始
     </div>
 
     <!-- div 用於顯示錯誤消息 -->
-    <div id="error-message" style="margin-top: 10px; color: red">
+    <div id="error-message" style="margin-top: 5px; color: red">
         錯誤消息：無
     </div>
 
