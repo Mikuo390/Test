@@ -132,6 +132,7 @@
             // 當用戶選擇不同的攝像頭時更新選擇的設備ID
             cameraSelect.addEventListener("change", (event) => {
               selectedDeviceId = event.target.value;
+              displayErrorMessage("無");
               startScanning(); // 重新開始掃描
             });
             // 啟動掃描
