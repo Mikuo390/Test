@@ -1,265 +1,194 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-TW">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ZXing 條碼掃描</title>
+    <title>自訂紙張大小打印示例</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/print-js/1.6.0/print.min.js"></script>
     <style>
-      body {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        margin: 10px;
+      /* 自訂打印樣式 */
+      .print-container {
+        text-align: center; /* 置中對齊 */
+        margin: 20px; /* 外邊距 */
+        font-size: 16px; /* 字體大小 */
       }
-      video {
-        border: 1px solid #ccc;
-        margin-bottom: 10px;
-        position: relative;
+      .print-container img {
+        max-width: 100%; /* 圖片最大寬度 */
+        height: auto; /* 自適應高度 */
       }
-      /* 掃描框樣式，初始隱藏 */
-      #scan-frame {
-        position: absolute;
-        top: 50%; /* 掃描框垂直置中 */
-        left: 50%; /* 掃描框水平置中 */
-        width: 50%;
-        height: 50%;
-        border: 2px solid red;
-        transform: translate(-50%, -50%);
-        box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
-        pointer-events: none; /* 不影響視頻點擊 */
-        display: none; /* 默認隱藏 */
+      #previewArea {
+        border: 1px solid #ccc; /* 預覽區域邊框 */
+        padding: 10px; /* 內邊距 */
+        margin-top: 20px; /* 上邊距 */
       }
-      /* 掃碼線樣式，初始隱藏 */
-      #scan-line {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 2px;
-        background-color: lime;
-        animation: scan-line-animation 2s infinite;
-        display: none; /* 默認隱藏 */
+      #entryList img {
+        max-width: 200px; /* 限制圖片的最大寬度 */
+        max-height: 200px; /* 限制圖片的最大高度 */
       }
-      /* 掃碼線的上下移動動畫 */
-      @keyframes scan-line-animation {
-        0% {
-          top: 0;
-        }
-        100% {
-          top: 100%;
-        }
+      @page {
+        margin: 35px;
       }
     </style>
-    <!-- 正確引入 @zxing/library 的 UMD 版本 -->
-    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@latest/umd/index.min.js"></script>
-    <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
   </head>
   <body>
-    <h1>ZXing 條碼掃描</h1>
+    <h2>自訂紙張大小打印示例</h2>
 
-    <!-- 攝像頭選擇區域 -->
-    <div style="margin-bottom: 10px">
-      <label for="camera-select">選擇攝像頭：</label>
-      <select id="camera-select"></select>
+    <form id="jsonInputForm">
+      <label for="imageUpload">上傳圖片:</label>
+      <input type="file" id="imageUpload" accept="image/*" /><br /><br />
+
+      <label for="imageUrl">或輸入圖片 URL:</label>
+      <input
+        type="text"
+        id="imageUrl"
+        placeholder="請輸入圖片 URL"
+      /><br /><br />
+
+      <label for="description">描述:</label>
+      <input
+        type="text"
+        id="description"
+        placeholder="請輸入描述"
+      /><br /><br />
+
+      <button type="button" onclick="addEntry()">添加條目</button>
+    </form>
+
+    <h3>已添加的條目:</h3>
+    <ul id="entryList"></ul>
+
+    <h3>預覽區域:</h3>
+    <div id="previewArea"></div>
+
+    <h3>選擇紙張大小:</h3>
+    <select id="paperSizeSelect" onchange="updatePaperSize()">
+      <option value="custom">自訂</option>
+      <option value="A4">A4 (8.27 × 11.69 英吋)</option>
+      <option value="Letter">Letter (8.5 × 11 英吋)</option></select
+    ><br /><br />
+
+    <div id="customPaperSize">
+      <label for="paperWidth">寬度 (單位: 英吋):</label>
+      <input type="number" id="paperWidth" value="8.5" step="0.1" /><br /><br />
+
+      <label for="paperHeight">高度 (單位: 英吋):</label>
+      <input type="number" id="paperHeight" value="11" step="0.1" /><br /><br />
     </div>
 
-    <!-- 攝像頭視頻流區域 -->
-    <div style="position: relative">
-      <video id="video" width="100%" height="80%" autoplay></video>
-      <!-- 掃描框 -->
-      <div id="scan-frame">
-        <!-- 掃碼線 -->
-        <div id="scan-line"></div>
-      </div>
-    </div>
-
-    <!-- 用於顯示縮放支援狀態 -->
-    <div id="zoom-support" style="margin-top: 10px; color: blue">
-      縮放支援狀態：未知
-    </div>
-
-    <!-- 缩放控制區域 -->
-    <div style="margin-top: 10px">
-      <label for="zoom-control">縮放：</label>
-      <input type="range" id="zoom-control" min="1" max="3" step="0.1" />
-    </div>
-
-    <!-- 顯示掃描結果的區域 -->
-    <div id="result" style="margin-top: 10px">
-      條碼結果：<span id="barcode-result"></span>
-    </div>
-
-    <!-- 用於顯示掃描狀態 -->
-    <div id="scan-status" style="margin-top: 10px; color: green">
-      掃描狀態：未開始
-    </div>
-
-    <!-- 用於顯示錯誤消息 -->
-    <div id="error-message" style="margin-top: 10px; color: red">
-      錯誤消息：無
-    </div>
+    <button onclick="printPreview()">打印預覽</button>
 
     <script>
-      // 初始化 ZXing 條碼讀取器
-      const codeReader = new ZXing.BrowserMultiFormatReader();
-      let lastResult = ""; // 用於保存上一次掃描結果
-      let selectedDeviceId = null; // 用於保存用戶選擇的攝像頭設備ID
-      let stream = null; // 用於保存視頻流
+      // 儲存使用者輸入的條目
+      const jsonData = [];
 
-      // 獲取攝像頭設備並填充到下拉菜單
-      async function getCamerasAndPopulateSelect() {
-        try {
-          // 獲取可用的攝像頭設備
-          const videoInputDevices = await codeReader.getVideoInputDevices();
-          const cameraSelect = document.getElementById("camera-select");
-          if (videoInputDevices.length > 0) {
-            // 默認選擇第一個設備
-            selectedDeviceId = videoInputDevices[0].deviceId;
-            if (!selectedDeviceId) {
-              displayErrorMessage("無法獲取攝像頭設備");
-            }
-            console.log(videoInputDevices);
+      // 紙張尺寸預定義
+      const paperSizes = {
+        A4: { width: 8.27, height: 11.69 },
+        Letter: { width: 8.5, height: 11 },
+      };
 
-            // 清空下拉菜單
-            cameraSelect.innerHTML = "";
+      function addEntry() {
+        const imageUpload = document.getElementById("imageUpload");
+        const imageUrl = document.getElementById("imageUrl").value;
+        const description = document.getElementById("description").value;
+        let imageSrc = "";
 
-            // 將每個攝像頭設備添加到下拉菜單中
-            videoInputDevices.forEach((device, index) => {
-              const option = document.createElement("option");
-              option.value = device.deviceId;
-              option.text = device.label || `Camera ${index + 1}`;
-              cameraSelect.appendChild(option);
-            });
-            cameraSelect.value = selectedDeviceId;
+        if (imageUpload.files.length > 0) {
+          const file = imageUpload.files[0];
+          const reader = new FileReader();
 
-            // 當用戶選擇不同的攝像頭時更新選擇的設備ID
-            cameraSelect.addEventListener("change", (event) => {
-              selectedDeviceId = event.target.value;
-              displayErrorMessage("無");
-              startScanning(); // 重新開始掃描
-            });
-            // 啟動掃描
-            startScanning();
-          } else {
-            console.error("沒有找到攝像頭設備");
-            displayErrorMessage("沒有找到攝像頭設備");
-          }
-        } catch (err) {
-          console.error("無法獲取攝像頭設備:", err);
-          displayErrorMessage("無法獲取攝像頭設備:"+err);
+          reader.onload = function (event) {
+            imageSrc = event.target.result; // 獲取上傳的圖片的URL
+            addToJson(imageSrc, description);
+          };
+
+          reader.readAsDataURL(file); // 讀取檔案為Data URL
+        } else if (imageUrl) {
+          imageSrc = imageUrl; // 使用輸入的URL
+          addToJson(imageSrc, description);
+        } else {
+          alert("請上傳圖片或輸入圖片 URL，並填寫描述");
         }
       }
 
-      // 檢查攝像頭權限並開始掃描
-      async function startScanning() {
-        // if (!selectedDeviceId) {
-        //   displayErrorMessage("無法獲取攝像頭設備");
-        //   return;
-        // }
-        console.log("Start Scan");
+      function addToJson(imageSrc, description) {
+        // 添加條目到 jsonData
+        jsonData.push({
+          data: `<div class="print-container"><img src='${imageSrc}' alt='示例圖片' style='max-width:200px; max-height:200px;'><br>${description}</div>`,
+        });
 
-        // 更新掃描狀態
-        document.getElementById("scan-status").textContent =
-          "掃描狀態：正在掃描";
+        // 更新條目列表
+        const entryList = document.getElementById("entryList");
+        const listItem = document.createElement("li");
+        listItem.innerHTML = `${description} (<img src='${imageSrc}' alt='示例圖片' style='width:50px; height:auto;'>)`;
+        entryList.appendChild(listItem);
 
-        // 停止之前的視頻流
-        if (stream) {
-          stream.getTracks().forEach((track) => track.stop());
+        // 更新預覽區域
+        updatePreview();
+
+        // 清空輸入框
+        document.getElementById("imageUpload").value = "";
+        document.getElementById("imageUrl").value = "";
+        document.getElementById("description").value = "";
+      }
+
+      function updatePreview() {
+        const previewArea = document.getElementById("previewArea");
+        previewArea.innerHTML = ""; // 清空預覽區域
+
+        jsonData.forEach((item) => {
+          previewArea.innerHTML += item.data; // 添加內容到預覽區域
+        });
+      }
+
+      function updatePaperSize() {
+        const selectedSize = document.getElementById("paperSizeSelect").value;
+        const customPaperSize = document.getElementById("customPaperSize");
+
+        if (selectedSize === "custom") {
+          customPaperSize.style.display = "block"; // 顯示自訂紙張大小輸入框
+        } else {
+          customPaperSize.style.display = "none"; // 隱藏自訂紙張大小輸入框
+        }
+      }
+
+      function printPreview() {
+        if (jsonData.length === 0) {
+          alert("請添加至少一個條目");
+          return;
         }
 
-        // 顯示掃描框和掃碼線
-        document.getElementById("scan-frame").style.display = "block";
-        document.getElementById("scan-line").style.display = "block";
+        const selectedSize = document.getElementById("paperSizeSelect").value;
+        let paperWidth, paperHeight;
 
-        try {
-          // 開始從攝像頭捕獲視頻
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: { deviceId: selectedDeviceId },
-          });
-          document.getElementById("video").srcObject = stream;
-
-          // 設置縮放控制
-          const videoTrack = stream.getVideoTracks()[0];
-          const capabilities = videoTrack.getCapabilities();
-
-          // 檢查攝像頭是否支援縮放並更新顯示
-          if (capabilities.zoom) {
-            document.getElementById("zoom-support").textContent =
-              "縮放支援狀態：支援";
-            const zoomControl = document.getElementById("zoom-control");
-            zoomControl.min = capabilities.zoom.min;
-            zoomControl.max = capabilities.zoom.max;
-            zoomControl.step = capabilities.zoom.step;
-            zoomControl.value = capabilities.zoom.min;
-
-            zoomControl.oninput = async (event) => {
-              const zoomLevel = event.target.value;
-              try {
-                await videoTrack.applyConstraints({
-                  advanced: [{ zoom: zoomLevel }],
-                });
-              } catch (err) {
-                console.warn("無法設置縮放級別:", err);
-                displayErrorMessage("無法設置縮放級別:"+err);
-              }
-            };
-          } else {
-            document.getElementById("zoom-support").textContent =
-              "縮放支援狀態：不支援";
-          }
-
-          // 使用 ZXing 解碼器來處理視頻流
-          codeReader.decodeFromVideoDevice(
-            selectedDeviceId,
-            "video",
-            (result, err) => {
-              if (result) {
-                // 更新掃描狀態為成功
-                document.getElementById("scan-status").textContent =
-                  "掃描狀態：成功";
-
-                // 顯示解碼後的結果
-                const currentResult = result.text;
-                document.getElementById("barcode-result").textContent =
-                  currentResult;
-
-                // 隱藏掃碼線和掃描框
-                document.getElementById("scan-frame").style.display = "none";
-                document.getElementById("scan-line").style.display = "none";
-
-                // 更新最後一次的結果
-                lastResult = currentResult;
-              } else {
-                // 繼續顯示掃碼線
-                document.getElementById("scan-frame").style.display = "block";
-                document.getElementById("scan-line").style.display = "block";
-              }
-
-              // 如果有錯誤但不是未找到條形碼的錯誤，記錄錯誤
-              if (err && !(err instanceof ZXing.NotFoundException)) {
-                console.error(err);
-              }
-            }
+        if (selectedSize === "custom") {
+          paperWidth = parseFloat(document.getElementById("paperWidth").value);
+          paperHeight = parseFloat(
+            document.getElementById("paperHeight").value
           );
-        } catch (err) {
-          console.error("無法獲取攝像頭視頻流:", err);
-          // 更新掃描狀態為失敗
-          document.getElementById("scan-status").textContent = "掃描狀態：失敗";
-          // 更新縮放支援狀態為未知
-          document.getElementById("zoom-support").textContent =
-            "縮放支援狀態：未知";
-          // 顯示錯誤消息
-          displayErrorMessage(err.message || "發生未知錯誤");
+        } else {
+          paperWidth = paperSizes[selectedSize].width;
+          paperHeight = paperSizes[selectedSize].height;
         }
+
+        // 調用 printJS 進行打印
+        printJS({
+          printable: jsonData,
+          type: "json",
+          properties: ["data"], // 仅打印 data 属性
+          style:
+            ".print-container { text-align: center; margin: 20px; font-size: 16px; } " +
+            ".print-container img { max-width: 100%; height: auto; }",
+          paperSize: {
+            width: paperWidth,
+            height: paperHeight,
+            unit: "in",
+          },
+        });
       }
 
-      // 當發生錯誤時更新錯誤消息
-      function displayErrorMessage(message) {
-        document.getElementById("error-message").textContent = "錯誤消息：" + message;
-      }
-
-      // 獲取攝像頭設備並填充到下拉菜單
-      getCamerasAndPopulateSelect();
+      // 初始化時隱藏自訂紙張大小輸入框
+      updatePaperSize();
     </script>
   </body>
 </html>
