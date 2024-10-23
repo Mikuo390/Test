@@ -1,194 +1,118 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>自訂紙張大小打印示例</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/print-js/1.6.0/print.min.js"></script>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QZ Tray 靜默打印範例</title>
+    <script src="./dist/qz-tray.js"></script>
     <style>
-      /* 自訂打印樣式 */
-      .print-container {
-        text-align: center; /* 置中對齊 */
-        margin: 20px; /* 外邊距 */
-        font-size: 16px; /* 字體大小 */
-      }
-      .print-container img {
-        max-width: 100%; /* 圖片最大寬度 */
-        height: auto; /* 自適應高度 */
-      }
-      #previewArea {
-        border: 1px solid #ccc; /* 預覽區域邊框 */
-        padding: 10px; /* 內邊距 */
-        margin-top: 20px; /* 上邊距 */
-      }
-      #entryList img {
-        max-width: 200px; /* 限制圖片的最大寬度 */
-        max-height: 200px; /* 限制圖片的最大高度 */
-      }
-      @page {
-        margin: 35px;
-      }
+        body { font-family: Arial, sans-serif; }
+        .container { margin: 20px; }
+        .error { color: red; }
     </style>
-  </head>
-  <body>
-    <h2>自訂紙張大小打印示例</h2>
+</head>
+<body>
+    <div class="container">
+        <h2>上傳圖片和文本進行靜默打印</h2>
 
-    <form id="jsonInputForm">
-      <label for="imageUpload">上傳圖片:</label>
-      <input type="file" id="imageUpload" accept="image/*" /><br /><br />
+        <label for="imageUpload">上傳圖片:</label>
+        <input type="file" id="imageUpload" accept="image/*"><br><br>
 
-      <label for="imageUrl">或輸入圖片 URL:</label>
-      <input
-        type="text"
-        id="imageUrl"
-        placeholder="請輸入圖片 URL"
-      /><br /><br />
+        <label for="description">描述:</label>
+        <input type="text" id="description" placeholder="請輸入描述"><br><br>
 
-      <label for="description">描述:</label>
-      <input
-        type="text"
-        id="description"
-        placeholder="請輸入描述"
-      /><br /><br />
+        <label for="printerSelect">選擇打印機:</label>
+        <select id="printerSelect"></select><br><br>
 
-      <button type="button" onclick="addEntry()">添加條目</button>
-    </form>
+        <div>
+            <label for="printType">打印類型:</label>
+            <select id="printType">
+                <option value="html">HTML</option>
+                <option value="raw">RAW</option>
+            </select>
 
-    <h3>已添加的條目:</h3>
-    <ul id="entryList"></ul>
+            <label for="printFormat">格式:</label>
+            <select id="printFormat">
+                <option value="plain">Plain</option>
+                <option value="pdf">PDF</option>
+                <option value="image">Image</option>
+            </select>
+        </div><br>
 
-    <h3>預覽區域:</h3>
-    <div id="previewArea"></div>
+        <button onclick="connectToQZ()">連接到 QZ Tray</button>
+        <button onclick="printSample()">靜默打印</button>
 
-    <h3>選擇紙張大小:</h3>
-    <select id="paperSizeSelect" onchange="updatePaperSize()">
-      <option value="custom">自訂</option>
-      <option value="A4">A4 (8.27 × 11.69 英吋)</option>
-      <option value="Letter">Letter (8.5 × 11 英吋)</option></select
-    ><br /><br />
-
-    <div id="customPaperSize">
-      <label for="paperWidth">寬度 (單位: 英吋):</label>
-      <input type="number" id="paperWidth" value="8.5" step="0.1" /><br /><br />
-
-      <label for="paperHeight">高度 (單位: 英吋):</label>
-      <input type="number" id="paperHeight" value="11" step="0.1" /><br /><br />
+        <div class="error" id="errorOutput"></div>
     </div>
 
-    <button onclick="printPreview()">打印預覽</button>
-
     <script>
-      // 儲存使用者輸入的條目
-      const jsonData = [];
-
-      // 紙張尺寸預定義
-      const paperSizes = {
-        A4: { width: 8.27, height: 11.69 },
-        Letter: { width: 8.5, height: 11 },
-      };
-
-      function addEntry() {
-        const imageUpload = document.getElementById("imageUpload");
-        const imageUrl = document.getElementById("imageUrl").value;
-        const description = document.getElementById("description").value;
-        let imageSrc = "";
-
-        if (imageUpload.files.length > 0) {
-          const file = imageUpload.files[0];
-          const reader = new FileReader();
-
-          reader.onload = function (event) {
-            imageSrc = event.target.result; // 獲取上傳的圖片的URL
-            addToJson(imageSrc, description);
-          };
-
-          reader.readAsDataURL(file); // 讀取檔案為Data URL
-        } else if (imageUrl) {
-          imageSrc = imageUrl; // 使用輸入的URL
-          addToJson(imageSrc, description);
-        } else {
-          alert("請上傳圖片或輸入圖片 URL，並填寫描述");
-        }
-      }
-
-      function addToJson(imageSrc, description) {
-        // 添加條目到 jsonData
-        jsonData.push({
-          data: `<div class="print-container"><img src='${imageSrc}' alt='示例圖片' style='max-width:200px; max-height:200px;'><br>${description}</div>`,
-        });
-
-        // 更新條目列表
-        const entryList = document.getElementById("entryList");
-        const listItem = document.createElement("li");
-        listItem.innerHTML = `${description} (<img src='${imageSrc}' alt='示例圖片' style='width:50px; height:auto;'>)`;
-        entryList.appendChild(listItem);
-
-        // 更新預覽區域
-        updatePreview();
-
-        // 清空輸入框
-        document.getElementById("imageUpload").value = "";
-        document.getElementById("imageUrl").value = "";
-        document.getElementById("description").value = "";
-      }
-
-      function updatePreview() {
-        const previewArea = document.getElementById("previewArea");
-        previewArea.innerHTML = ""; // 清空預覽區域
-
-        jsonData.forEach((item) => {
-          previewArea.innerHTML += item.data; // 添加內容到預覽區域
-        });
-      }
-
-      function updatePaperSize() {
-        const selectedSize = document.getElementById("paperSizeSelect").value;
-        const customPaperSize = document.getElementById("customPaperSize");
-
-        if (selectedSize === "custom") {
-          customPaperSize.style.display = "block"; // 顯示自訂紙張大小輸入框
-        } else {
-          customPaperSize.style.display = "none"; // 隱藏自訂紙張大小輸入框
-        }
-      }
-
-      function printPreview() {
-        if (jsonData.length === 0) {
-          alert("請添加至少一個條目");
-          return;
+        function connectToQZ() {
+            qz.websocket.connect().then(function() {
+                console.log("已連接到 QZ Tray!");
+                loadPrinters();
+            }).catch(function(e) {
+                console.error("連接失敗:", e);
+                document.getElementById('errorOutput').textContent = "連接失敗: " + e.message;
+            });
         }
 
-        const selectedSize = document.getElementById("paperSizeSelect").value;
-        let paperWidth, paperHeight;
-
-        if (selectedSize === "custom") {
-          paperWidth = parseFloat(document.getElementById("paperWidth").value);
-          paperHeight = parseFloat(
-            document.getElementById("paperHeight").value
-          );
-        } else {
-          paperWidth = paperSizes[selectedSize].width;
-          paperHeight = paperSizes[selectedSize].height;
+        function loadPrinters() {
+            qz.printers.find().then(function(printers) {
+                const printerSelect = document.getElementById('printerSelect');
+                printerSelect.innerHTML = '';
+                printers.forEach(function(printer) {
+                    const option = document.createElement('option');
+                    option.value = printer;
+                    option.text = printer;
+                    printerSelect.add(option);
+                });
+            }).catch(function(e) {
+                console.error("加載打印機失敗:", e);
+                document.getElementById('errorOutput').textContent = "加載打印機失敗: " + e.message;
+            });
         }
 
-        // 調用 printJS 進行打印
-        printJS({
-          printable: jsonData,
-          type: "json",
-          properties: ["data"], // 仅打印 data 属性
-          style:
-            ".print-container { text-align: center; margin: 20px; font-size: 16px; } " +
-            ".print-container img { max-width: 100%; height: auto; }",
-          paperSize: {
-            width: paperWidth,
-            height: paperHeight,
-            unit: "in",
-          },
-        });
-      }
+        function printSample() {
+            const printerName = document.getElementById('printerSelect').value;
+            const imageUpload = document.getElementById('imageUpload');
+            const description = document.getElementById('description').value;
+            const printType = document.getElementById('printType').value;
+            const printFormat = document.getElementById('printFormat').value;
 
-      // 初始化時隱藏自訂紙張大小輸入框
-      updatePaperSize();
+            if (!printerName) {
+                alert('請先選擇打印機');
+                return;
+            }
+
+            if (imageUpload.files.length === 0) {
+                alert('請上傳圖片');
+                return;
+            }
+
+            const file = imageUpload.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function(event) {
+                const imageSrc = event.target.result;
+
+                const config = qz.configs.create(printerName);
+                const data = [{
+                    type: printType,
+                    format: printFormat,
+                    data: `<h1>打印內容</h1><img src="${imageSrc}" style="max-width:100%; height:auto;"><p>${description}</p>`
+                }];
+
+                qz.print(config, data).then(function() {
+                    console.log("靜默打印成功!");
+                    document.getElementById('errorOutput').textContent = ""; // 清空錯誤信息
+                }).catch(function(e) {
+                    console.error("打印失敗:", e);
+                    document.getElementById('errorOutput').textContent = "打印失敗: " + e.message;
+                });
+            };
+
+            reader.readAsDataURL(file);
+        }
     </script>
-  </body>
+</body>
 </html>
